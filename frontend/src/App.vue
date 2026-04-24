@@ -1,10 +1,29 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 
+const views = [
+  {
+    id: 'unclaimed',
+    label: 'Unclaimed',
+    title: 'Unclaimed Tickets',
+    endpoint: '/api/items',
+    empty: 'No unclaimed tickets',
+  },
+  {
+    id: 'mine',
+    label: 'Claimed by me',
+    title: 'Claimed by Me',
+    endpoint: '/api/items/claimed-by-me',
+    empty: 'No tickets claimed by you',
+  },
+]
+
 const items = ref([])
 const selectedId = ref(null)
+const selectedView = ref('unclaimed')
 const currentReviewer = ref('alex')
-const activeCount = ref(0)
+const unclaimedCount = ref(0)
+const claimedByMeCount = ref(0)
 const terminalCount = ref(0)
 const loading = ref(true)
 const acting = ref(false)
@@ -12,7 +31,14 @@ const pendingAction = ref('')
 const error = ref('')
 const feedback = ref('')
 
+const currentView = computed(() => views.find((view) => view.id === selectedView.value) || views[0])
 const selectedItem = computed(() => items.value.find((item) => item.id === selectedId.value) || null)
+const unclaimedBadgeCount = computed(() =>
+  selectedView.value === 'unclaimed' ? items.value.length : unclaimedCount.value,
+)
+const mineBadgeCount = computed(() =>
+  selectedView.value === 'mine' ? items.value.length : claimedByMeCount.value,
+)
 
 const ageLabel = (submittedAt) => {
   const formatter = new Intl.DateTimeFormat(undefined, {
@@ -39,7 +65,7 @@ async function loadQueue(preferredId = selectedId.value) {
   error.value = ''
 
   try {
-    const response = await fetch('/api/items')
+    const response = await fetch(currentView.value.endpoint)
     if (!response.ok) {
       throw new Error('Queue could not be loaded')
     }
@@ -47,7 +73,8 @@ async function loadQueue(preferredId = selectedId.value) {
     const payload = await response.json()
     items.value = payload.items
     currentReviewer.value = payload.current_reviewer
-    activeCount.value = payload.active_count
+    unclaimedCount.value = payload.unclaimed_count
+    claimedByMeCount.value = payload.claimed_by_me_count
     terminalCount.value = payload.terminal_count
 
     const preferredStillActive = items.value.some((item) => item.id === preferredId)
@@ -57,6 +84,15 @@ async function loadQueue(preferredId = selectedId.value) {
   } finally {
     loading.value = false
   }
+}
+
+async function switchView(viewId) {
+  if (selectedView.value === viewId || acting.value) return
+
+  selectedView.value = viewId
+  selectedId.value = null
+  feedback.value = ''
+  await loadQueue(null)
 }
 
 async function performAction(action) {
@@ -98,7 +134,7 @@ onMounted(() => loadQueue())
     <header class="topbar">
       <div>
         <p class="eyebrow">Reviewer workspace</p>
-        <h1>Active Queue</h1>
+        <h1>{{ currentView.title }}</h1>
       </div>
       <dl class="metrics" aria-label="Queue summary">
         <div>
@@ -106,8 +142,12 @@ onMounted(() => loadQueue())
           <dd>{{ currentReviewer }}</dd>
         </div>
         <div>
-          <dt>Active</dt>
-          <dd>{{ activeCount }}</dd>
+          <dt>Unclaimed</dt>
+          <dd>{{ unclaimedCount }}</dd>
+        </div>
+        <div>
+          <dt>Mine</dt>
+          <dd>{{ claimedByMeCount }}</dd>
         </div>
         <div>
           <dt>Closed</dt>
@@ -116,13 +156,29 @@ onMounted(() => loadQueue())
       </dl>
     </header>
 
+    <nav class="view-switcher" aria-label="Queue views">
+      <button
+        v-for="view in views"
+        :key="view.id"
+        class="view-tab"
+        :class="{ selected: selectedView === view.id }"
+        type="button"
+        :aria-current="selectedView === view.id ? 'page' : undefined"
+        :disabled="acting"
+        @click="switchView(view.id)"
+      >
+        <span>{{ view.label }}</span>
+        <strong>{{ view.id === 'unclaimed' ? unclaimedBadgeCount : mineBadgeCount }}</strong>
+      </button>
+    </nav>
+
     <p v-if="feedback" class="feedback" role="status">{{ feedback }}</p>
     <p v-if="error" class="error" role="alert">{{ error }}</p>
 
     <div v-if="loading" class="loading">Loading queue...</div>
 
     <section v-else class="layout" aria-label="Reviewer queue workspace">
-      <aside class="queue" aria-label="Items needing review">
+      <aside class="queue" :aria-label="currentView.title">
         <button
           v-for="item in items"
           :key="item.id"
@@ -142,7 +198,7 @@ onMounted(() => loadQueue())
           </span>
         </button>
 
-        <p v-if="items.length === 0" class="empty">No active items</p>
+        <p v-if="items.length === 0" class="empty">{{ currentView.empty }}</p>
       </aside>
 
       <article v-if="selectedItem" class="detail">
@@ -198,7 +254,7 @@ onMounted(() => loadQueue())
       </article>
 
       <article v-else class="detail empty-detail">
-        <h2>Queue clear</h2>
+        <h2>{{ currentView.empty }}</h2>
       </article>
     </section>
   </main>

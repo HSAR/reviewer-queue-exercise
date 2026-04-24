@@ -58,6 +58,8 @@ class QueueResponse(BaseModel):
     current_reviewer: str
     items: list[ItemWithActions]
     active_count: int
+    unclaimed_count: int
+    claimed_by_me_count: int
     terminal_count: int
 
 
@@ -121,10 +123,44 @@ def decorate_item(item: ReviewItem, rank: int = 0) -> ItemWithActions:
     )
 
 
+def sort_by_urgency(items: list[ReviewItem]) -> list[ReviewItem]:
+    return sorted(items, key=urgency_key)
+
+
 def active_items() -> list[ReviewItem]:
     return sorted(
         (item for item in items_by_id.values() if item.status not in TERMINAL_STATUSES),
         key=urgency_key,
+    )
+
+
+def unclaimed_items() -> list[ReviewItem]:
+    return sort_by_urgency([item for item in items_by_id.values() if item.status not in TERMINAL_STATUSES])
+
+
+def claimed_by_reviewer_items(reviewer: str = CURRENT_REVIEWER) -> list[ReviewItem]:
+    return sort_by_urgency(
+        [
+            item
+            for item in items_by_id.values()
+            if item.assigned_reviewer == reviewer
+        ]
+    )
+
+
+def terminal_count() -> int:
+    return len([item for item in items_by_id.values() if item.status in TERMINAL_STATUSES])
+
+
+def queue_response(items: list[ReviewItem]) -> QueueResponse:
+    decorated = [decorate_item(item, index + 1) for index, item in enumerate(items)]
+    return QueueResponse(
+        current_reviewer=CURRENT_REVIEWER,
+        items=decorated,
+        active_count=len(active_items()),
+        unclaimed_count=len(unclaimed_items()),
+        claimed_by_me_count=len(claimed_by_reviewer_items()),
+        terminal_count=terminal_count(),
     )
 
 
@@ -135,14 +171,12 @@ def health() -> dict[str, str]:
 
 @app.get("/api/items", response_model=QueueResponse)
 def get_queue() -> QueueResponse:
-    active = active_items()
-    decorated = [decorate_item(item, index + 1) for index, item in enumerate(active)]
-    return QueueResponse(
-        current_reviewer=CURRENT_REVIEWER,
-        items=decorated,
-        active_count=len(active),
-        terminal_count=len(items_by_id) - len(active),
-    )
+    return queue_response(unclaimed_items())
+
+
+@app.get("/api/items/claimed-by-me", response_model=QueueResponse)
+def get_claimed_by_me_queue() -> QueueResponse:
+    return queue_response(claimed_by_reviewer_items())
 
 
 @app.get("/api/items/{item_id}", response_model=ItemWithActions)

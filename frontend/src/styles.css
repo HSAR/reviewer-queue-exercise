@@ -60,7 +60,7 @@ h2 {
 .metrics {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  grid-template-columns: repeat(4, minmax(90px, 1fr));
   margin: 0;
 }
 
@@ -108,6 +108,54 @@ dd {
 .loading {
   background: #ffffff;
   border: 1px solid #d8dde6;
+}
+
+.view-switcher {
+  display: flex;
+  gap: 8px;
+  margin: 0 auto 16px;
+  max-width: 1180px;
+}
+
+.view-tab {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d8dde6;
+  border-radius: 8px;
+  color: #344054;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.view-tab strong {
+  align-items: center;
+  background: #edf2f7;
+  border-radius: 999px;
+  color: #1d4ed8;
+  display: inline-flex;
+  font-size: 0.82rem;
+  justify-content: center;
+  min-width: 28px;
+  padding: 4px 8px;
+}
+
+.view-tab:hover,
+.view-tab.selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.view-tab.selected {
+  color: #18202a;
+  font-weight: 800;
+}
+
+.view-tab:disabled {
+  cursor: progress;
+  opacity: 0.7;
 }
 
 .layout {
@@ -302,7 +350,7 @@ dd {
   }
 
   .metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .layout {
@@ -325,6 +373,11 @@ dd {
 
   .metrics,
   .facts {
+    grid-template-columns: 1fr;
+  }
+
+  .view-switcher {
+    display: grid;
     grid-template-columns: 1fr;
   }
 

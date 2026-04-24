@@ -1,5 +1,26 @@
 # Reviewer Queue Take-Home
 
+## Implementation Quick Start
+
+This scaffold uses FastAPI for the workflow API and Vue/Vite for the reviewer workspace.
+
+Run the app with Docker:
+
+```sh
+docker compose up --build
+```
+
+Then open:
+
+- UI: http://localhost:5173
+- API health: http://localhost:8000/health
+
+Run backend tests through Docker:
+
+```sh
+docker compose run --rm api pytest
+```
+
 This repository contains a small fullstack take-home exercise for a **mid-level engineer**.
 
 The goal is to assess how you turn a concrete workflow into a simple, usable product slice:

@@ -1,6 +1,6 @@
 # Reviewer Queue
 
-A small reviewer workspace for an operations team. It shows the active review queue, lets a reviewer inspect item details, and applies simple workflow actions against an in-memory FastAPI service.
+A small reviewer workspace for an operations team. It separates unclaimed tickets from tickets claimed by the current reviewer, lets a reviewer inspect item details, and applies simple workflow actions against an in-memory FastAPI service.
 
 ## Stack
 
@@ -43,8 +43,8 @@ NOTES.md               Assumptions, tradeoffs, and implementation details
 
 ## Behavior
 
-The app loads seed data into memory when the API starts. The active queue excludes terminal items and is ordered by urgency: high risk first, then priority customers, then older submissions.
+The app loads seed data into memory when the API starts. The unclaimed and claimed-by-me queues are both ordered by urgency: high risk first, then priority customers, then older submissions.
 
-The current reviewer is hardcoded as `alex`. Claiming an unassigned item moves it into review and assigns it to that reviewer. Items in review can be approved, rejected, or escalated. Terminal items leave the active queue and cannot be changed again.
+The current reviewer is hardcoded as `alex`. Claiming an unassigned item moves it into review, assigns it to that reviewer, and moves it from the unclaimed view into the claimed-by-me view. Items in review can be approved, rejected, or escalated. Terminal items leave the active queues and cannot be changed again.
 
 Data is not persisted. Restarting the API resets the queue back to the seed file.

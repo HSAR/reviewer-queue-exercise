@@ -16,8 +16,13 @@ The backend owns the workflow rules in `backend/app/main.py`.
 - `claim` changes status to `in_review` and records `assigned_reviewer`.
 - `in_review` items allow `approve`, `reject`, and `escalate`.
 - `approved`, `rejected`, and `escalated` are terminal states.
-- Terminal items return no allowed actions and are excluded from the active queue.
+- Terminal items return no allowed actions and are excluded from the active queues.
 - Invalid transitions return `400` responses with a clear error message.
+
+The queue endpoints are:
+
+- `GET /api/items` for all unclaimed tickets.
+- `GET /api/items/claimed-by-me` for tickets assigned to `alex` and still in review.
 
 The API also decorates each item with:
 
@@ -26,7 +31,7 @@ The API also decorates each item with:
 
 ## Queue Ordering
 
-The queue is sorted server-side using the requested urgency rules:
+Both queues are sorted server-side using the requested urgency rules:
 
 1. `risk_level`: `high`, then `medium`, then `low`
 2. `customer_tier`: `priority`, then `standard`
@@ -36,23 +41,26 @@ Keeping this in the API avoids having the frontend and backend disagree about wh
 
 ## UI Choices
 
-The frontend is intentionally one screen:
+The frontend is intentionally one screen with two queue views:
 
-- Left side: active queue ordered by urgency.
+- `Unclaimed`: all tickets ready to be claimed.
+- `Claimed by me`: tickets assigned to `alex` and ready for a decision.
+- Left side: the selected queue ordered by urgency.
 - Right side: selected item details and workflow actions.
-- Top summary: current reviewer, active count, and closed count.
+- Top summary: current reviewer, unclaimed count, claimed-by-me count, and closed count.
 - Feedback banner after successful actions.
 - Error banner for rejected actions or API failures.
 - Loading state while the queue is fetched.
 
-The UI does not show terminal records in the queue because the primary reviewer task is active work. After an item is approved, rejected, or escalated, it disappears from the active queue and the next item is selected.
+The UI does not show terminal records in either queue because the primary reviewer task is active work. Claiming an item moves the reviewer into the claimed-by-me view with that item selected. After an item is approved, rejected, or escalated, it disappears from the claimed-by-me view and the next item is selected.
 
 ## Testing
 
 Backend tests cover the core business behavior:
 
-- Active queue excludes terminal items.
-- Active queue uses the expected urgency order.
+- Unclaimed queue excludes claimed and terminal items.
+- Claimed-by-me queue returns only the current reviewer's in-review items.
+- Both queue views use the expected urgency order.
 - Items expose the correct allowed actions.
 - Claiming records the reviewer and moves the item to `in_review`.
 - Approve, reject, and escalate move `in_review` items to terminal states.

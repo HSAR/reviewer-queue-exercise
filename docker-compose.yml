@@ -1,14 +1,38 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: reviewer_queue
+      POSTGRES_USER: reviewer
+      POSTGRES_PASSWORD: reviewer
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reviewer -d reviewer_queue"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d:ro
+
   api:
     build:
       context: .
       dockerfile: backend/Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: reviewer_queue
+      POSTGRES_USER: reviewer
+      POSTGRES_PASSWORD: reviewer
     ports:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
-      - ./data:/app/data:ro
+      - ./backend/db:/app/db:ro
 
   frontend:
     build:
@@ -26,3 +50,4 @@ services:
 
 volumes:
   frontend_node_modules:
+  postgres_data:

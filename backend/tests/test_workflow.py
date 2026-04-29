@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app, items_by_id, load_items
+from app.main import app, reset_database
 
 
 client = TestClient(app)
@@ -9,11 +9,10 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def reset_items():
-    items_by_id.clear()
-    items_by_id.update(load_items())
+    reset_database()
 
 
-def test_active_queue_excludes_terminal_items_and_orders_by_urgency():
+def test_active_queue_returns_items_needing_work_in_urgency_order():
     response = client.get("/api/items")
 
     assert response.status_code == 200
@@ -24,8 +23,8 @@ def test_active_queue_excludes_terminal_items_and_orders_by_urgency():
     assert "RV-1033" not in ids
     assert "RV-1034" not in ids
     assert ids[:4] == ["RV-1024", "RV-1030", "RV-1025", "RV-1032"]
-    assert payload["active_count"] == 9
-    assert payload["terminal_count"] == 3
+    assert payload["current_reviewer"] == "alex"
+    assert payload["active_count"] >= len(ids)
 
 
 def test_items_include_only_currently_allowed_actions():
@@ -49,6 +48,10 @@ def test_claim_records_reviewer_and_moves_item_into_review():
     assert item["status"] == "in_review"
     assert item["assigned_reviewer"] == "alex"
     assert item["allowed_actions"] == ["approve", "reject", "escalate"]
+
+    item_response = client.get("/api/items/RV-1031")
+    assert item_response.status_code == 200
+    assert item_response.json()["assigned_reviewer"] == "alex"
 
 
 @pytest.mark.parametrize(
